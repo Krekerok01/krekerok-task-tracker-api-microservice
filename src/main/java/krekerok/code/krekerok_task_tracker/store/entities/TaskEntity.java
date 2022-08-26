@@ -21,6 +21,9 @@ public class TaskEntity {
 
     private String name;
 
+    @ManyToOne
+    private TaskStateEntity taskState;
+
     @Builder.Default
     private Instant createdAt = Instant.now();
 
