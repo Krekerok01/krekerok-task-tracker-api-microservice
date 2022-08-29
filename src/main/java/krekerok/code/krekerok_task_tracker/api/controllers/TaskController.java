@@ -86,37 +86,22 @@ public class TaskController {
 
 
     @PatchMapping(UPDATE_TASK)
-    public TaskDto updateTask(
-            @PathVariable(value = "task_id") Long taskId,
+    public TaskDto updateTask( @PathVariable(value = "task_id") Long taskId,
             @RequestParam(value = "task_name", required = false) Optional<String> optionalTaskName,
             @RequestParam(value = "task_description", required = false) Optional<String> optionalTaskDescription
     ) {
 
-
         optionalTaskName = optionalTaskName.filter(taskName -> !taskName.trim().isEmpty());
         optionalTaskDescription = optionalTaskDescription.filter(taskDescription -> !taskDescription.trim().isEmpty());
 
+        checkingTheTaskNameAndTheTaskDescriptionForExistence(optionalTaskName, optionalTaskDescription);
 
-        TaskEntity task = controllerHelper.getTaskOrThrowException(taskId);
+        TaskEntity task = checkingTheExistenceOfTheTaskByIdAndSetNewParams(taskId, optionalTaskName, optionalTaskDescription);
 
-        if (!optionalTaskName.isPresent() && !optionalTaskDescription.isPresent()){
-            throw new BadRequestException("Project name can't be empty.");
-        }
-
-        optionalTaskName
-                .ifPresent(taskName -> {
-                    task.setName(taskName);
-                });
-
-        optionalTaskDescription
-                .ifPresent(taskDescription -> {
-                    task.setDescription(taskDescription);
-                });
-
-        final TaskEntity savedTask = taskRepository.saveAndFlush(task);
-
-        return taskDtoFactory.makeTaskDto(savedTask);
+        return taskDtoFactory.makeTaskDto(taskRepository.saveAndFlush(task));
     }
+
+
 
 
     @DeleteMapping(DELETE_TASK)
@@ -127,4 +112,19 @@ public class TaskController {
         return AskDto.makeDefault(true);
     }
 
+    private TaskEntity checkingTheExistenceOfTheTaskByIdAndSetNewParams(Long taskId, Optional<String> optionalTaskName, Optional<String> optionalTaskDescription) {
+        TaskEntity task = controllerHelper.getTaskOrThrowException(taskId);
+
+        optionalTaskName.ifPresent(taskName -> {task.setName(taskName);});
+        optionalTaskDescription.ifPresent(taskDescription -> {task.setDescription(taskDescription);});
+
+        return task;
+    }
+
+
+    private void checkingTheTaskNameAndTheTaskDescriptionForExistence(Optional<String> optionalTaskName, Optional<String> optionalTaskDescription){
+        if (!optionalTaskName.isPresent() && !optionalTaskDescription.isPresent()){
+            throw new BadRequestException("Task name and task description can't be empty at the same time.");
+        }
+    }
 }
