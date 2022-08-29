@@ -2,22 +2,16 @@ package krekerok.code.krekerok_task_tracker.api.controllers;
 
 import krekerok.code.krekerok_task_tracker.api.controllers.helpers.ControllerHelper;
 import krekerok.code.krekerok_task_tracker.api.dto.AskDto;
-import krekerok.code.krekerok_task_tracker.api.dto.ProjectDto;
 import krekerok.code.krekerok_task_tracker.api.dto.TaskDto;
 import krekerok.code.krekerok_task_tracker.api.exceptions.BadRequestException;
-import krekerok.code.krekerok_task_tracker.api.exceptions.NotFoundException;
 import krekerok.code.krekerok_task_tracker.api.factories.TaskDtoFactory;
-import krekerok.code.krekerok_task_tracker.store.entities.ProjectEntity;
 import krekerok.code.krekerok_task_tracker.store.entities.TaskEntity;
 import krekerok.code.krekerok_task_tracker.store.entities.TaskStateEntity;
 import krekerok.code.krekerok_task_tracker.store.repositories.TaskRepository;
-import krekerok.code.krekerok_task_tracker.store.repositories.TaskStateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
 import javax.transaction.Transactional;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
