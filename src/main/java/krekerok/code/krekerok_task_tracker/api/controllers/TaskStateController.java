@@ -46,13 +46,9 @@ public class TaskStateController {
     }
 
     @PostMapping(CREATE_TASK_STATE)
-    public TaskStateDto createTaskState(
-            @PathVariable(value = "project_id") Long projectId,
-            @RequestParam(name = "task_state_name") String taskStateName){
+    public TaskStateDto createTaskState(@PathVariable(value = "project_id") Long projectId, @RequestParam(name = "task_state_name") String taskStateName){
 
-        if (taskStateName.trim().isEmpty()){
-            throw new BadRequestException("Task state name can't be empty.");
-        }
+        checkingTheExistenceOfTaskStateName(taskStateName);
 
         ProjectEntity project = controllerHelper.getProjectOrThrowException(projectId);
 
@@ -89,14 +85,14 @@ public class TaskStateController {
         return taskStateDtoFactory.makeTaskStateDto(savedTaskState);
     }
 
+
+
     @PatchMapping(UPDATE_TASK_STATE)
     public TaskStateDto updateTaskState(
             @PathVariable(value = "task_state_id") Long taskStateId,
             @RequestParam(name = "task_state_name") String taskStateName){
 
-        if (taskStateName.trim().isEmpty()){
-            throw new BadRequestException("Task state name can't be empty.");
-        }
+        checkingTheExistenceOfTaskStateName(taskStateName);
 
         TaskStateEntity taskState = getTaskStateOrThrowException(taskStateId);
 
@@ -204,6 +200,13 @@ public class TaskStateController {
         taskStateRepository.delete(changeTaskState);
 
         return AskDto.builder().answer(true).build();
+    }
+
+
+    private void checkingTheExistenceOfTaskStateName(String taskStateName) {
+        if (taskStateName.trim().isEmpty()){
+            throw new BadRequestException("Task state name can't be empty.");
+        }
     }
 
     private void replaceOldTaskStatePosition(TaskStateEntity changeTaskState) {
