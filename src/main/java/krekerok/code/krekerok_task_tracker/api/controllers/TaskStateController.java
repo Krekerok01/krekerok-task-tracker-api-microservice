@@ -38,8 +38,7 @@ public class TaskStateController {
 
         ProjectEntity project = controllerHelper.getProjectOrThrowException(projectId);
 
-        return project
-                .getTaskStates()
+        return project.getTaskStates()
                 .stream()
                 .map(taskStateDtoFactory::makeTaskStateDto)
                 .collect(Collectors.toList());
@@ -211,28 +210,19 @@ public class TaskStateController {
         Optional<TaskStateEntity> optionalOldLeftTaskState = changeTaskState.getLeftTaskState();
         Optional<TaskStateEntity> optionalOldRightTaskState = changeTaskState.getRightTaskState();
 
-        optionalOldLeftTaskState
-                .ifPresent(it -> {
 
+        optionalOldLeftTaskState.ifPresent(it -> {
                     it.setRightTaskState(optionalOldRightTaskState.orElse(null));
+                    taskStateRepository.saveAndFlush(it);});
 
-                    taskStateRepository.saveAndFlush(it);
-                });
-        optionalOldRightTaskState
-                .ifPresent(it -> {
-
+        optionalOldRightTaskState.ifPresent(it -> {
                     it.setLeftTaskState(optionalOldLeftTaskState.orElse(null));
-
-                    taskStateRepository.saveAndFlush(it);
-                });
+                    taskStateRepository.saveAndFlush(it);});
     }
 
     private TaskStateEntity getTaskStateOrThrowException(Long taskStateId){
-        return taskStateRepository
-                .findById(taskStateId)
-                .orElseThrow(
-                        () -> new NotFoundException(String.format("Task state with \"%s\" id doesn't exist.", taskStateId))
-                );
+        return taskStateRepository.findById(taskStateId)
+                                  .orElseThrow(() -> new NotFoundException(String.format("Task state with \"%s\" id doesn't exist.", taskStateId)));
 
     }
 }
