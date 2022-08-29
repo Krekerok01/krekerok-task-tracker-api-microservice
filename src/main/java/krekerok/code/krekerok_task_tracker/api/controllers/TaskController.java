@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 public class TaskController {
 
     private final TaskRepository taskRepository;
-    private final TaskStateRepository taskStateRepository;
     private final TaskDtoFactory taskDtoFactory;
 
     private final ControllerHelper controllerHelper;
@@ -42,8 +41,7 @@ public class TaskController {
 
         TaskStateEntity taskState = controllerHelper.getTaskStateOrThrowException(taskStateId);
 
-        return taskState
-                .getTasks()
+        return taskState.getTasks()
                 .stream()
                 .map(taskDtoFactory::makeTaskDto)
                 .collect(Collectors.toList());
@@ -51,37 +49,18 @@ public class TaskController {
     }
 
     @PostMapping(CREATE_TASK)
-    public TaskDto createTask(
-            @PathVariable(value = "task_state_id") Long taskStateId,
+    public TaskDto createTask(@PathVariable(value = "task_state_id") Long taskStateId,
             @RequestParam(name = "task_name") String taskName,
             @RequestParam(name = "task_description") String taskDescription){
 
-        if (taskName.trim().isEmpty() || taskDescription.trim().isEmpty()){
-            throw new BadRequestException("Information about task can't be empty.");
-        }
+        if (taskName.trim().isEmpty() || taskDescription.trim().isEmpty()) throw new BadRequestException("Information about task can't be empty.");
 
         TaskStateEntity taskState = controllerHelper.getTaskStateOrThrowException(taskStateId);
+        checkingForATaskNameMatch(taskState.getTasks(), taskName);
 
-        for (TaskEntity task: taskState.getTasks()){
-            if (task.getName().equalsIgnoreCase(taskName)){
-                throw new BadRequestException(String.format("Task \"%s\" already exists.", taskName));
-            }
-        }
-
-        TaskEntity task = taskRepository.saveAndFlush(
-                TaskEntity.builder()
-                        .name(taskName)
-                        .description(taskDescription)
-                        .taskState(taskState)
-                        .build()
-        );
-
-
-        final TaskEntity savedTask = taskRepository.saveAndFlush(task);
-
-        return taskDtoFactory.makeTaskDto(savedTask);
+        TaskEntity task = buildTaskByTaskNameAndTaskDescriptionAndTaskStateAndAfterSaveToTheDB(taskName, taskDescription, taskState);
+        return taskDtoFactory.makeTaskDto(taskRepository.saveAndFlush(task));
     }
-
 
 
 
@@ -102,14 +81,26 @@ public class TaskController {
     }
 
 
-
-
     @DeleteMapping(DELETE_TASK)
     public AskDto deleteTask(@PathVariable("task_id") Long taskId){
         controllerHelper.getTaskOrThrowException(taskId);
-
         taskRepository.deleteById(taskId);
         return AskDto.makeDefault(true);
+    }
+
+    public TaskEntity buildTaskByTaskNameAndTaskDescriptionAndTaskStateAndAfterSaveToTheDB(String taskName, String taskDescription, TaskStateEntity taskState){
+        return taskRepository.saveAndFlush(TaskEntity.builder().name(taskName)
+                .description(taskDescription)
+                .taskState(taskState)
+                .build());
+    }
+
+    private void checkingForATaskNameMatch(List<TaskEntity> tasks, String taskName){
+        for (TaskEntity task: tasks){
+            if (task.getName().equalsIgnoreCase(taskName)){
+                throw new BadRequestException(String.format("Task \"%s\" already exists.", taskName));
+            }
+        }
     }
 
     private TaskEntity checkingTheExistenceOfTheTaskByIdAndSetNewParams(Long taskId, Optional<String> optionalTaskName, Optional<String> optionalTaskDescription) {
