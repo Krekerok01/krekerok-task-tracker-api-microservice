@@ -117,47 +117,18 @@ public class TaskStateController {
             @RequestParam(name = "left_task_state_id") Optional<Long> optionalLeftTaskStateId){
 
         TaskStateEntity changeTaskState = getTaskStateOrThrowException(taskStateId);
-
         ProjectEntity project = changeTaskState.getProject();
 
-        Optional<Long> optionalOldLeftTaskStateId = changeTaskState
-                .getLeftTaskState()
-                .map(TaskStateEntity::getId);
-
-        if (optionalOldLeftTaskStateId.equals(optionalLeftTaskStateId)){
-            return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
-        }
+        Optional<Long> optionalOldLeftTaskStateId = changeTaskState.getLeftTaskState().map(TaskStateEntity::getId);
 
 
+        if (optionalOldLeftTaskStateId.equals(optionalLeftTaskStateId)) return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
 
-        Optional<TaskStateEntity> optionalNewLeftTaskState = optionalLeftTaskStateId
-                .map(leftTaskStateId -> {
 
-                    if (taskStateId.equals(leftTaskStateId)) {
-                        throw new BadRequestException("Left task state id equals changed task state id.");
-                    }
+        Optional<TaskStateEntity> optionalNewLeftTaskState =
+                getOptionalNewLeftTaskStateOrThrowException(taskStateId, optionalLeftTaskStateId, project);
+        Optional<TaskStateEntity> optionalNewRightTaskState = getOptionalNewRightTaskState(optionalNewLeftTaskState, project);
 
-                    TaskStateEntity leftTaskStateEntity = getTaskStateOrThrowException(leftTaskStateId);
-
-                    if (!project.getId().equals(leftTaskStateEntity.getProject().getId())) {
-                        throw new BadRequestException("Tsk state position can be changed within the same project.");
-                    }
-
-                    return leftTaskStateEntity;
-                });
-
-        Optional<TaskStateEntity> optionalNewRightTaskState;
-
-        if (!optionalNewLeftTaskState.isPresent()) {
-            optionalNewRightTaskState = project.
-                    getTaskStates()
-                    .stream()
-                    .filter(anotherTaskState -> !anotherTaskState.getLeftTaskState().isPresent())
-                    .findAny();
-
-        } else {
-            optionalNewRightTaskState = optionalNewLeftTaskState.get().getRightTaskState();
-        }
 
         replaceOldTaskStatePosition(changeTaskState);
 
@@ -187,6 +158,35 @@ public class TaskStateController {
         optionalNewRightTaskState.ifPresent(taskStateRepository::saveAndFlush);
 
         return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
+    }
+
+    private Optional<TaskStateEntity> getOptionalNewLeftTaskStateOrThrowException(Long taskStateId, Optional<Long> optionalLeftTaskStateId, ProjectEntity project) {
+        return optionalLeftTaskStateId
+                .map(leftTaskStateId -> {
+
+                    if (taskStateId.equals(leftTaskStateId)) throw new BadRequestException("Left task state id equals changed task state id.");
+
+                    TaskStateEntity leftTaskStateEntity = getTaskStateOrThrowException(leftTaskStateId);
+
+                    if (!project.getId().equals(leftTaskStateEntity.getProject().getId())) throw new BadRequestException("Tsk state position can be changed within the same project.");
+
+                    return leftTaskStateEntity;
+                });
+    }
+
+
+    private Optional<TaskStateEntity> getOptionalNewRightTaskState( Optional<TaskStateEntity> optionalNewLeftTaskState, ProjectEntity project){
+        Optional<TaskStateEntity> optionalNewRightTaskState;
+
+        if (!optionalNewLeftTaskState.isPresent()) {
+            optionalNewRightTaskState = project.getTaskStates().stream()
+                    .filter(anotherTaskState -> !anotherTaskState.getLeftTaskState().isPresent())
+                    .findAny();
+        } else {
+            optionalNewRightTaskState = optionalNewLeftTaskState.get().getRightTaskState();
+        }
+
+        return optionalNewRightTaskState;
     }
 
     @DeleteMapping(DELETE_TASK_STATE)
