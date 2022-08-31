@@ -49,42 +49,21 @@ public class TaskStateController {
     public TaskStateDto createTaskState(@PathVariable(value = "project_id") Long projectId, @RequestParam(name = "task_state_name") String taskStateName){
 
         checkingTheExistenceOfTaskStateName(taskStateName);
-
         ProjectEntity project = controllerHelper.getProjectOrThrowException(projectId);
 
         Optional<TaskStateEntity> optionalAnotherTaskState = Optional.empty();
-
-        for (TaskStateEntity taskState: project.getTaskStates()){
-            if (taskState.getName().equalsIgnoreCase(taskStateName)){
-                throw new BadRequestException(String.format("Task state \"%s\" already exists.", taskStateName));
-            }
-
-            if (!taskState.getRightTaskState().isPresent()){
-                optionalAnotherTaskState = Optional.of(taskState);
-                break;
-            }
-        }
+        optionalAnotherTaskState = getOptionalAnotherTaskStateAndComparisonByEqualityOfNames(taskStateName, project, optionalAnotherTaskState);
 
 
-        TaskStateEntity taskState = taskStateRepository.saveAndFlush(
-               TaskStateEntity.builder()
-                       .name(taskStateName)
-                       .project(project)
-                       .build()
-        );
+        TaskStateEntity taskState = taskStateRepository.saveAndFlush(TaskStateEntity.builder().name(taskStateName).project(project).build());
 
-        optionalAnotherTaskState
-               .ifPresent(anotherTaskState -> {
+        optionalAnotherTaskState.ifPresent(anotherTaskState -> {
                    taskState.setLeftTaskState(anotherTaskState);
                    anotherTaskState.setRightTaskState(taskState);
-                   taskStateRepository.saveAndFlush(anotherTaskState);
-               });
+                   taskStateRepository.saveAndFlush(anotherTaskState);});
 
-        final TaskStateEntity savedTaskState = taskStateRepository.saveAndFlush(taskState);
-
-        return taskStateDtoFactory.makeTaskStateDto(savedTaskState);
+        return taskStateDtoFactory.makeTaskStateDto(taskStateRepository.saveAndFlush(taskState));
     }
-
 
 
     @PatchMapping(UPDATE_TASK_STATE)
@@ -93,7 +72,6 @@ public class TaskStateController {
             @RequestParam(name = "task_state_name") String taskStateName){
 
         checkingTheExistenceOfTaskStateName(taskStateName);
-
         TaskStateEntity taskState = getTaskStateOrThrowException(taskStateId);
 
         taskStateRepository
@@ -106,10 +84,10 @@ public class TaskStateController {
                         });
 
         taskState.setName(taskStateName);
-        taskState = taskStateRepository.saveAndFlush(taskState);
 
-        return taskStateDtoFactory.makeTaskStateDto(taskState);
+        return taskStateDtoFactory.makeTaskStateDto(taskStateRepository.saveAndFlush(taskState));
     }
+
 
     @PatchMapping(CHANGE_TASK_STATE_POSITION)
     public TaskStateDto changeTaskStatePosition(
@@ -152,12 +130,40 @@ public class TaskStateController {
             changeTaskState.setRightTaskState(null);
         }
 
-        // saving to the DB
         changeTaskState = taskStateRepository.saveAndFlush(changeTaskState);
         optionalNewLeftTaskState.ifPresent(taskStateRepository::saveAndFlush);
         optionalNewRightTaskState.ifPresent(taskStateRepository::saveAndFlush);
 
         return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
+    }
+
+
+    @DeleteMapping(DELETE_TASK_STATE)
+    public AskDto deleteTaskState(@PathVariable(value = "task_state_id") Long taskStateId){
+
+        TaskStateEntity changeTaskState = getTaskStateOrThrowException(taskStateId);
+
+        replaceOldTaskStatePosition(changeTaskState);
+
+        taskStateRepository.saveAndFlush(changeTaskState);
+        taskStateRepository.delete(changeTaskState);
+
+        return AskDto.builder().answer(true).build();
+    }
+
+
+    private Optional<TaskStateEntity> getOptionalAnotherTaskStateAndComparisonByEqualityOfNames(String taskStateName, ProjectEntity project, Optional<TaskStateEntity> optionalAnotherTaskState) {
+        for (TaskStateEntity taskState: project.getTaskStates()){
+            if (taskState.getName().equalsIgnoreCase(taskStateName)){
+                throw new BadRequestException(String.format("Task state \"%s\" already exists.", taskStateName));
+            }
+
+            if (!taskState.getRightTaskState().isPresent()){
+                optionalAnotherTaskState = Optional.of(taskState);
+                break;
+            }
+        }
+        return optionalAnotherTaskState;
     }
 
     private Optional<TaskStateEntity> getOptionalNewLeftTaskStateOrThrowException(Long taskStateId, Optional<Long> optionalLeftTaskStateId, ProjectEntity project) {
@@ -174,7 +180,6 @@ public class TaskStateController {
                 });
     }
 
-
     private Optional<TaskStateEntity> getOptionalNewRightTaskState( Optional<TaskStateEntity> optionalNewLeftTaskState, ProjectEntity project){
         Optional<TaskStateEntity> optionalNewRightTaskState;
 
@@ -188,20 +193,6 @@ public class TaskStateController {
 
         return optionalNewRightTaskState;
     }
-
-    @DeleteMapping(DELETE_TASK_STATE)
-    public AskDto deleteTaskState(@PathVariable(value = "task_state_id") Long taskStateId){
-
-        TaskStateEntity changeTaskState = getTaskStateOrThrowException(taskStateId);
-
-        replaceOldTaskStatePosition(changeTaskState);
-
-        taskStateRepository.saveAndFlush(changeTaskState);
-        taskStateRepository.delete(changeTaskState);
-
-        return AskDto.builder().answer(true).build();
-    }
-
 
     private void checkingTheExistenceOfTaskStateName(String taskStateName) {
         if (taskStateName.trim().isEmpty()){
