@@ -33,8 +33,7 @@ public class ProjectController {
 
 
     @GetMapping(FETCH_PROJECTS)
-    public List<ProjectDto> fetchProjects(
-            @RequestParam(value = "prefix_name", required = false) Optional<String> optionalPrefixName) {
+    public List<ProjectDto> fetchProjects(@RequestParam(value = "prefix_name", required = false) Optional<String> optionalPrefixName) {
 
         optionalPrefixName = optionalPrefixName.filter(prefixName -> !prefixName.trim().isEmpty());
 
@@ -42,20 +41,15 @@ public class ProjectController {
                 .map(projectRepository::streamAllByNameStartsWithIgnoreCase)
                 .orElseGet(projectRepository::streamAllBy);
 
-
-        return projectStream
-                .map(projectDtoFactory::makeProjectDto)
-                .collect(Collectors.toList());
+        return projectStream.map(projectDtoFactory::makeProjectDto).collect(Collectors.toList());
     }
 
 
 
 
     @PutMapping(CREATE_OR_UPDATE_PROJECT)
-    public ProjectDto createOrUpdateProject(
-            @RequestParam(value = "project_id", required = false) Optional<Long> optionalProjectId,
+    public ProjectDto createOrUpdateProject(@RequestParam(value = "project_id", required = false) Optional<Long> optionalProjectId,
             @RequestParam(value = "project_name", required = false) Optional<String> optionalProjectName
-            //Another params...
             ) {
 
         optionalProjectName = optionalProjectName.filter(projectName -> !projectName.trim().isEmpty());
@@ -91,7 +85,6 @@ public class ProjectController {
     @DeleteMapping(DELETE_PROJECT)
     public AskDto deleteProject(@PathVariable("project_id") Long projectId){
         controllerHelper.getProjectOrThrowException(projectId);
-
         projectRepository.deleteById(projectId);
         return AskDto.makeDefault(true);
     }
