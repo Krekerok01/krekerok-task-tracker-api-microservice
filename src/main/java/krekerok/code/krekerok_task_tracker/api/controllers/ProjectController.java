@@ -56,17 +56,14 @@ public class ProjectController {
 
         boolean isCreate = !optionalProjectId.isPresent();
 
-        final ProjectEntity project = optionalProjectId
+        ProjectEntity project = optionalProjectId
                 .map(controllerHelper::getProjectOrThrowException)
                 .orElseGet(() -> ProjectEntity.builder().build());
 
-        if (isCreate && !optionalProjectName.isPresent()){
-            throw new BadRequestException("Project name can't be empty.");
-        }
+        if (isCreate && !optionalProjectName.isPresent()) throw new BadRequestException("Project name can't be empty.");
 
-        optionalProjectName
-                .ifPresent(projectName -> {
-                    projectRepository
+
+        optionalProjectName.ifPresent(projectName -> { projectRepository
                             .findByName(projectName)
                             .filter(anotherProject -> !Objects.equals(anotherProject.getId(), project.getId()))
                             .ifPresent(anotherProject ->{
@@ -75,9 +72,8 @@ public class ProjectController {
                     project.setName(projectName);
                 });
 
-        final ProjectEntity savedProject = projectRepository.saveAndFlush(project);
 
-        return projectDtoFactory.makeProjectDto(savedProject);
+        return projectDtoFactory.makeProjectDto(projectRepository.saveAndFlush(project));
     }
 
 
