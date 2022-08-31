@@ -103,23 +103,23 @@ public class TaskStateController {
         if (optionalOldLeftTaskStateId.equals(optionalLeftTaskStateId)) return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
 
 
-        Optional<TaskStateEntity> optionalNewLeftTaskState =
-                getOptionalNewLeftTaskStateOrThrowException(taskStateId, optionalLeftTaskStateId, project);
+        Optional<TaskStateEntity> optionalNewLeftTaskState = getOptionalNewLeftTaskStateOrThrowException(taskStateId, optionalLeftTaskStateId, project);
         Optional<TaskStateEntity> optionalNewRightTaskState = getOptionalNewRightTaskState(optionalNewLeftTaskState, project);
 
 
         replaceOldTaskStatePosition(changeTaskState);
 
-        if (optionalNewLeftTaskState.isPresent()){
+        setLeftTaskStateToTheChangeTaskState(changeTaskState, optionalNewLeftTaskState);
+        setRightTaskStateToTheChangeTaskState(changeTaskState, optionalNewRightTaskState);
 
-            TaskStateEntity newLeftTaskState = optionalNewLeftTaskState.get();
+        changeTaskState = taskStateRepository.saveAndFlush(changeTaskState);
+        optionalNewLeftTaskState.ifPresent(taskStateRepository::saveAndFlush);
+        optionalNewRightTaskState.ifPresent(taskStateRepository::saveAndFlush);
 
-            newLeftTaskState.setRightTaskState(changeTaskState);
-            changeTaskState.setLeftTaskState(newLeftTaskState);
-        } else {
-            changeTaskState.setLeftTaskState(null);
-        }
+        return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
+    }
 
+    private void setRightTaskStateToTheChangeTaskState(TaskStateEntity changeTaskState, Optional<TaskStateEntity> optionalNewRightTaskState) {
         if (optionalNewRightTaskState.isPresent()){
 
             TaskStateEntity newRightTaskState = optionalNewRightTaskState.get();
@@ -129,12 +129,18 @@ public class TaskStateController {
         } else {
             changeTaskState.setRightTaskState(null);
         }
+    }
 
-        changeTaskState = taskStateRepository.saveAndFlush(changeTaskState);
-        optionalNewLeftTaskState.ifPresent(taskStateRepository::saveAndFlush);
-        optionalNewRightTaskState.ifPresent(taskStateRepository::saveAndFlush);
+    private void setLeftTaskStateToTheChangeTaskState(TaskStateEntity changeTaskState, Optional<TaskStateEntity> optionalNewLeftTaskState) {
+        if (optionalNewLeftTaskState.isPresent()){
 
-        return taskStateDtoFactory.makeTaskStateDto(changeTaskState);
+            TaskStateEntity newLeftTaskState = optionalNewLeftTaskState.get();
+
+            newLeftTaskState.setRightTaskState(changeTaskState);
+            changeTaskState.setLeftTaskState(newLeftTaskState);
+        } else {
+            changeTaskState.setLeftTaskState(null);
+        }
     }
 
 
